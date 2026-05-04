@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/
+dev.db
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.env
+keys/*.pem

@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build: .
+    container_name: trustipay-auth-service
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: file:../data/trustipay_auth.sqlite
+      AUTH_ISSUER_URL: http://localhost:3001/auth
+      AUTH_TOKEN_HASH_SECRET: replace-with-strong-random-secret
+    volumes:
+      - ./.env:/app/.env:ro
+      - ./data:/app/data
+      - ./keys:/app/keys:ro
+    restart: unless-stopped

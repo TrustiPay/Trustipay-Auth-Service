@@ -1,0 +1,308 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  userId              String               @id @map("user_id")
+  status              String
+  displayName         String?              @map("display_name")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  lockedAt            DateTime?            @map("locked_at")
+  lockReason          String?              @map("lock_reason")
+  deletedAt           DateTime?            @map("deleted_at")
+  emails              UserEmail[]
+  phones              UserPhone[]
+  passwordCredentials PasswordCredential[]
+  sessions            Session[]
+  devices             Device[]
+  tokenFamilies       RefreshTokenFamily[]
+  authorizationCodes  AuthorizationCode[]
+
+  @@map("users")
+}
+
+model UserEmail {
+  emailId         String    @id @map("email_id")
+  userId          String    @map("user_id")
+  emailNormalized String    @unique @map("email_normalized")
+  emailDisplay    String    @map("email_display")
+  isPrimary       Boolean   @default(false) @map("is_primary")
+  isVerified      Boolean   @default(false) @map("is_verified")
+  verifiedAt      DateTime? @map("verified_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_emails")
+}
+
+model UserPhone {
+  phoneId    String    @id @map("phone_id")
+  userId     String    @map("user_id")
+  phoneE164  String    @unique @map("phone_e164")
+  isPrimary  Boolean   @default(false) @map("is_primary")
+  isVerified Boolean   @default(false) @map("is_verified")
+  verifiedAt DateTime? @map("verified_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  user       User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_phones")
+}
+
+model PasswordCredential {
+  credentialId    String   @id @map("credential_id")
+  userId          String   @map("user_id")
+  passwordHash    String   @map("password_hash")
+  hashAlgorithm   String   @map("hash_algorithm")
+  hashParamsJson  String   @map("hash_params_json")
+  passwordVersion Int      @default(1) @map("password_version")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  lastChangedAt   DateTime @map("last_changed_at")
+  mustChange      Boolean  @default(false) @map("must_change")
+  user            User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_credentials")
+}
+
+model OauthClient {
+  clientId                String               @id @map("client_id")
+  clientName              String               @map("client_name")
+  clientType              String               @map("client_type")
+  status                  String
+  redirectUrisJson        String               @map("redirect_uris_json")
+  allowedScopesJson       String               @map("allowed_scopes_json")
+  allowedGrantTypesJson   String               @map("allowed_grant_types_json")
+  tokenEndpointAuthMethod String               @map("token_endpoint_auth_method")
+  clientSecretHash        String?              @map("client_secret_hash")
+  jwksUri                 String?              @map("jwks_uri")
+  pkceRequired            Boolean              @default(false) @map("pkce_required")
+  createdAt               DateTime             @default(now()) @map("created_at")
+  updatedAt               DateTime             @updatedAt @map("updated_at")
+  authorizationCodes      AuthorizationCode[]
+  sessions                Session[]
+  tokenFamilies           RefreshTokenFamily[]
+
+  @@map("oauth_clients")
+}
+
+model AuthorizationCode {
+  codeId              String       @id @map("code_id")
+  codeHash            String       @unique @map("code_hash")
+  userId              String       @map("user_id")
+  clientId            String       @map("client_id")
+  redirectUri         String       @map("redirect_uri")
+  scope               String
+  codeChallenge       String       @map("code_challenge")
+  codeChallengeMethod String       @map("code_challenge_method")
+  nonce               String?
+  stateHash           String?      @map("state_hash")
+  sessionId           String       @map("session_id")
+  deviceId            String?      @map("device_id")
+  expiresAt           DateTime     @map("expires_at")
+  consumedAt          DateTime?    @map("consumed_at")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  user                User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  client              OauthClient  @relation(fields: [clientId], references: [clientId])
+  session             Session      @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([sessionId])
+  @@map("authorization_codes")
+}
+
+model Session {
+  sessionId          String               @id @map("session_id")
+  userId             String               @map("user_id")
+  clientId           String               @map("client_id")
+  deviceId           String?              @map("device_id")
+  status             String
+  authTime           DateTime             @map("auth_time")
+  lastSeenAt         DateTime?            @map("last_seen_at")
+  expiresAt          DateTime?            @map("expires_at")
+  ipHash             String?              @map("ip_hash")
+  userAgentHash      String?              @map("user_agent_hash")
+  aal                Int                  @default(1)
+  amrJson            String               @map("amr_json")
+  riskLevel          String               @default("normal") @map("risk_level")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  revokedAt          DateTime?            @map("revoked_at")
+  revokeReason       String?              @map("revoke_reason")
+  user               User                 @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  client             OauthClient          @relation(fields: [clientId], references: [clientId])
+  device             Device?              @relation(fields: [deviceId], references: [deviceId])
+  authorizationCodes AuthorizationCode[]
+  tokenFamilies      RefreshTokenFamily[]
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([deviceId])
+  @@map("sessions")
+}
+
+model RefreshTokenFamily {
+  familyId      String         @id @map("family_id")
+  userId        String         @map("user_id")
+  clientId      String         @map("client_id")
+  sessionId     String         @map("session_id")
+  deviceId      String?        @map("device_id")
+  status        String
+  createdAt     DateTime       @default(now()) @map("created_at")
+  revokedAt     DateTime?      @map("revoked_at")
+  revokeReason  String?        @map("revoke_reason")
+  user          User           @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  client        OauthClient    @relation(fields: [clientId], references: [clientId])
+  session       Session        @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  device        Device?        @relation(fields: [deviceId], references: [deviceId])
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([deviceId])
+  @@map("refresh_token_families")
+}
+
+model RefreshToken {
+  tokenId           String             @id @map("token_id")
+  familyId          String             @map("family_id")
+  tokenHash         String             @unique @map("token_hash")
+  status            String
+  issuedAt          DateTime           @default(now()) @map("issued_at")
+  expiresAt         DateTime           @map("expires_at")
+  consumedAt        DateTime?          @map("consumed_at")
+  replacedByTokenId String?            @map("replaced_by_token_id")
+  ipHash            String?            @map("ip_hash")
+  userAgentHash     String?            @map("user_agent_hash")
+  family            RefreshTokenFamily @relation(fields: [familyId], references: [familyId], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([status])
+  @@map("refresh_tokens")
+}
+
+model AccessTokenJti {
+  jti          String    @id
+  userId       String    @map("user_id")
+  sessionId    String    @map("session_id")
+  clientId     String    @map("client_id")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  revokeReason String?   @map("revoke_reason")
+
+  @@index([sessionId])
+  @@map("access_token_jti")
+}
+
+model Device {
+  deviceId          String               @id @map("device_id")
+  userId            String               @map("user_id")
+  status            String
+  platform          String
+  deviceName        String?              @map("device_name")
+  appVersion        String?              @map("app_version")
+  osVersion         String?              @map("os_version")
+  publicSigningKey  String?              @map("public_signing_key")
+  keyAlgorithm      String?              @map("key_algorithm")
+  deviceCertificate String?              @map("device_certificate")
+  pushTokenHash     String?              @map("push_token_hash")
+  firstSeenAt       DateTime             @default(now()) @map("first_seen_at")
+  lastSeenAt        DateTime?            @map("last_seen_at")
+  revokedAt         DateTime?            @map("revoked_at")
+  revokeReason      String?              @map("revoke_reason")
+  riskScore         Int                  @default(0) @map("risk_score")
+  user              User                 @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  sessions          Session[]
+  tokenFamilies     RefreshTokenFamily[]
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model VerificationChallenge {
+  challengeId    String    @id @map("challenge_id")
+  userId         String?   @map("user_id")
+  identifierHash String?   @map("identifier_hash")
+  challengeType  String    @map("challenge_type")
+  challengeHash  String    @map("challenge_hash")
+  purpose        String
+  status         String
+  attemptCount   Int       @default(0) @map("attempt_count")
+  maxAttempts    Int       @default(5) @map("max_attempts")
+  expiresAt      DateTime  @map("expires_at")
+  consumedAt     DateTime? @map("consumed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([identifierHash])
+  @@index([status])
+  @@map("verification_challenges")
+}
+
+model MfaFactor {
+  factorId        String    @id @map("factor_id")
+  userId          String    @map("user_id")
+  factorType      String    @map("factor_type")
+  status          String
+  displayName     String?   @map("display_name")
+  secretEncrypted String?   @map("secret_encrypted")
+  phoneId         String?   @map("phone_id")
+  emailId         String?   @map("email_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  verifiedAt      DateTime? @map("verified_at")
+  lastUsedAt      DateTime? @map("last_used_at")
+  revokedAt       DateTime? @map("revoked_at")
+
+  @@index([userId])
+  @@map("mfa_factors")
+}
+
+model PasskeyCredential {
+  credentialId             String    @id @map("credential_id")
+  userId                   String    @map("user_id")
+  credentialIdBase64Url    String    @unique @map("credential_id_base64url")
+  publicKey                String    @map("public_key")
+  signCount                Int       @default(0) @map("sign_count")
+  transportsJson           String?   @map("transports_json")
+  aaguid                   String?
+  backupEligible           Boolean?  @map("backup_eligible")
+  backupState              Boolean?  @map("backup_state")
+  status                   String
+  createdAt                DateTime  @default(now()) @map("created_at")
+  lastUsedAt               DateTime? @map("last_used_at")
+  revokedAt                DateTime? @map("revoked_at")
+
+  @@index([userId])
+  @@map("passkey_credentials")
+}
+
+model AuditEvent {
+  eventId       String   @id @map("event_id")
+  eventType     String   @map("event_type")
+  userId        String?  @map("user_id")
+  sessionId     String?  @map("session_id")
+  deviceId      String?  @map("device_id")
+  clientId      String?  @map("client_id")
+  requestId     String?  @map("request_id")
+  ipHash        String?  @map("ip_hash")
+  userAgentHash String?  @map("user_agent_hash")
+  result        String
+  riskLevel     String?  @map("risk_level")
+  metadataJson  String?  @map("metadata_json")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([eventType])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_events")
+}
